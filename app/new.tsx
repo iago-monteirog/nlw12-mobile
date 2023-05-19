@@ -1,15 +1,58 @@
-import { View, TouchableOpacity, Switch, Text, TextInput, ScrollView } from "react-native";
+import { View, TouchableOpacity, Switch, Text, TextInput, ScrollView, Image } from "react-native";
 import NLWLogo from '../src/assets/spacetime-logo.svg'
 import { Link } from "expo-router";
 import Icon from '@expo/vector-icons/Feather'
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useState } from "react";
+import * as ImagePicker from 'expo-image-picker';
+import * as SecureStore from 'expo-secure-store';
+import { api } from "../src/lib/api";
+
 
 
 export default function NewMemory() {
     const { bottom, top } = useSafeAreaInsets()
 
     const [isPublic, setIsPublic] = useState(false)
+    const [content, setContent] = useState('')
+    const [preview, setPreview] = useState<string | null>(null)
+
+    async function openImagePicker() {
+        try {
+            const result = await ImagePicker.launchImageLibraryAsync({
+                mediaTypes: ImagePicker.MediaTypeOptions.Images,
+                quality: 1,
+            });
+
+            if (result.assets[0]) {
+                setPreview(result.assets[0].uri)
+            }
+        } catch (error) {
+            console.log(error)
+        }
+    }
+
+    async function handleCreateMemory() {
+        const token = await SecureStore.getItemAsync('token')
+        let coverUrl = ''
+
+        if (preview) {
+            console.log('entrou')
+            const uploadFormData = new FormData()
+
+            uploadFormData.append('file', {
+                uri: preview,
+                name: 'image.jpeg',
+                type: 'image/jpeg'
+            } as any)
+
+            const uploadResponse = await api.post('/upload', uploadFormData)
+
+            coverUrl = uploadResponse.data.fileUrl
+
+            console.log(coverUrl)
+        }
+    }
 
     return (
         <ScrollView className="flex-1 px-8" contentContainerStyle={{ paddingBottom: bottom, paddingTop: top }}>
@@ -38,15 +81,22 @@ export default function NewMemory() {
                 <TouchableOpacity
                     activeOpacity={0.7}
                     className="h-32 items-center justify-center rounded-lg border border-dashed border-gray-500 bg-black-20"
+                    onPress={openImagePicker}
                 >
-                    <View className="flex-row items-center gap-2">
-                        <Icon name="image" color="white" />
-                        <Text className="font-body text-sm text-gray-200">Adicionar foto ou vídeo de capa</Text>
-                    </View>
+                    {preview ? (
+                        <Image alt="" source={{ uri: preview }} className="h-full w-full rounded-lg object-cover" />
+                    ) : (
+                        <View className="flex-row items-center gap-2">
+                            <Icon name="image" color="white" />
+                            <Text className="font-body text-sm text-gray-200">Adicionar foto ou vídeo de capa</Text>
+                        </View>
+                    )}
                 </TouchableOpacity>
 
                 <TextInput
                     multiline
+                    value={content}
+                    onChangeText={setContent}
                     className="p-0 font-body text-lg text-gray-50"
                     placeholder="Fique livre para adicionar fotos, vídeos e relatos sobre essa experiência que você quer lembrar para sempre."
                     placeholderTextColor="#56565a"
@@ -55,6 +105,7 @@ export default function NewMemory() {
                 <TouchableOpacity
                     className="items-center rounded-full bg-green-500 px-5 py-3"
                     activeOpacity={0.7}
+                    onPress={handleCreateMemory}
                 >
                     <Text className="font-alt text-sm uppercase text-black">
                         Salvar
