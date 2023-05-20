@@ -1,6 +1,6 @@
 import { View, TouchableOpacity, Switch, Text, TextInput, ScrollView, Image } from "react-native";
 import NLWLogo from '../src/assets/spacetime-logo.svg'
-import { Link } from "expo-router";
+import { Link, useRouter } from "expo-router";
 import Icon from '@expo/vector-icons/Feather'
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useState } from "react";
@@ -12,6 +12,7 @@ import { api } from "../src/lib/api";
 
 export default function NewMemory() {
     const { bottom, top } = useSafeAreaInsets()
+    const router = useRouter()
 
     const [isPublic, setIsPublic] = useState(false)
     const [content, setContent] = useState('')
@@ -37,7 +38,6 @@ export default function NewMemory() {
         let coverUrl = ''
 
         if (preview) {
-            console.log('entrou')
             const uploadFormData = new FormData()
 
             uploadFormData.append('file', {
@@ -46,12 +46,27 @@ export default function NewMemory() {
                 type: 'image/jpeg'
             } as any)
 
-            const uploadResponse = await api.post('/upload', uploadFormData)
+            const uploadResponse = await api.post('/upload', uploadFormData, {
+                headers: {
+                    'Content-Type': 'multipart/form-data',
+                }
+            })
 
             coverUrl = uploadResponse.data.fileUrl
 
-            console.log(coverUrl)
         }
+
+        await api.post('/memories', {
+            content,
+            isPublic,
+            coverUrl
+        }, {
+            headers: {
+                Authorization: `Bearer ${token}`
+            }
+        })
+
+        router.push('/memories')
     }
 
     return (
@@ -96,6 +111,7 @@ export default function NewMemory() {
                 <TextInput
                     multiline
                     value={content}
+                    textAlignVertical="top"
                     onChangeText={setContent}
                     className="p-0 font-body text-lg text-gray-50"
                     placeholder="Fique livre para adicionar fotos, vídeos e relatos sobre essa experiência que você quer lembrar para sempre."
